@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>工作台总览</h2>
+<div class="card-row">
+  {% for k, v in stats.items() %}
+  <div class="card"><div class="num">{{ v }}</div><div>{{ k }}</div></div>
+  {% endfor %}
+</div>
+<h2>处理流程</h2>
+<p>虚构总体(10万户) → 分层多阶段抽样(4500户) → 录入(含错误) → <b>审核规则</b>检出 →
+<b>疑问问卷</b>批注改正 → <b>缺失插补</b>(热卡/回归) → 事后加权 → <b>加权汇总</b>(含抽样误差与置信区间)。</p>
+<form method="post" action="{{ url_for('do_recompute') }}"
+      onsubmit="return confirm('用当前改正记录重新跑修正/插补/加权/汇总?')">
+  <button type="submit">应用全部改正并重算汇总</button>
+</form>
+{% endblock %}

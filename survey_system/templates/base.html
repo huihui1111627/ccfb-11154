@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}调查数据处理工作台{% endblock %}</title>
+<style>
+  body { font-family: -apple-system, "PingFang SC", sans-serif; margin: 0; color: #222; }
+  nav { background: #1f4e79; padding: 10px 24px; }
+  nav a { color: #fff; text-decoration: none; margin-right: 22px; font-size: 15px; }
+  nav a:hover { text-decoration: underline; }
+  nav .brand { font-weight: bold; margin-right: 30px; }
+  main { padding: 20px 28px; max-width: 1200px; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid #ccc; padding: 5px 12px; text-align: right; }
+  th { background: #eef3f8; }
+  td.l, th.l { text-align: left; }
+  .bad { background: #fde2e2; }
+  .warn { background: #fff6d6; }
+  .ok { color: #1a7f37; }
+  .card-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .card { border: 1px solid #ddd; border-radius: 8px; padding: 14px 20px; min-width: 150px; }
+  .card .num { font-size: 26px; font-weight: bold; color: #1f4e79; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; }
+  .tag.e { background: #fde2e2; color: #b00020; }
+  .tag.w { background: #fff6d6; color: #8a6d00; }
+  input, select, textarea { padding: 5px 8px; font-size: 14px; }
+  button, .btn { background: #1f4e79; color: #fff; border: 0; padding: 7px 16px;
+                 border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; }
+  .flash { background: #e6f4ea; border: 1px solid #1a7f37; padding: 8px 14px; border-radius: 5px; }
+  h2 { border-left: 4px solid #1f4e79; padding-left: 10px; }
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="{{ url_for('dashboard') }}">📊 {{ title }}</a>
+  <a href="{{ url_for('structure') }}">问卷结构</a>
+  <a href="{{ url_for('rules') }}">审核规则</a>
+  <a href="{{ url_for('queries') }}">疑问问卷</a>
+  <a href="{{ url_for('imputation') }}">缺失插补</a>
+  <a href="{{ url_for('summary') }}">加权汇总</a>
+</nav>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

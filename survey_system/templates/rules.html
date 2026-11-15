@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>审核规则与检出情况</h2>
+<h3>系统规则(范围/跳转)</h3>
+<table>
+  <tr><th class="l">规则</th><th class="l">说明</th><th class="l">级别</th><th>检出条数</th></tr>
+  {% for r in counts %}
+  <tr>
+    <td class="l">{{ r.rule }}</td><td class="l">{{ r.规则 }}</td>
+    <td class="l"><span class="tag {{ 'e' if r.severity == 'error' else 'w' }}">{{ r.severity }}</span></td>
+    <td>{{ r.条数 }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h3>跨题逻辑规则</h3>
+<table>
+  <tr><th class="l">编号</th><th class="l">前提</th><th class="l">校验式</th><th class="l">说明</th><th class="l">级别</th></tr>
+  {% for r in cross %}
+  <tr><td class="l">{{ r.id }}</td><td class="l"><code>{{ r.when }}</code></td>
+      <td class="l"><code>{{ r.check }}</code></td><td class="l">{{ r.msg }}</td>
+      <td class="l"><span class="tag {{ 'e' if r.severity == 'error' else 'w' }}">{{ r.severity }}</span></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

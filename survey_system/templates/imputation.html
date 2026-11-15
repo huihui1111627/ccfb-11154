@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>缺失插补</h2>
+<p>B1工资性收入、C1食品支出用<b>回归法</b>(log线性模型+残差噪声); 其余用<b>热卡法</b>
+(插补类: 城乡×年龄段×性别, 逐级回退)。插补值在数据中带 <code>*_imp</code> 标记。</p>
+<h3>插补量统计</h3>
+<table>
+  <tr><th class="l">题目</th><th>缺失数</th><th class="l">方法</th><th>插补后均值</th></tr>
+  {% for s in stats %}
+  <tr><td class="l">{{ s.question }}</td><td>{{ s.缺失数 }}</td>
+      <td class="l">{{ s.插补方法 }}</td><td>{{ s.插补后均值 }}</td></tr>
+  {% endfor %}
+</table>
+<h3>插补精度（与干净样本真值对比）</h3>
+<table>
+  <tr><th class="l">题目</th><th>插补数</th><th>真值均值</th><th>插补均值</th><th>相对偏差%</th></tr>
+  {% for b in bias %}
+  <tr><td class="l">{{ b.question }}</td><td>{{ b.插补数 }}</td>
+      <td>{{ b.真值均值 }}</td><td>{{ b.插补均值 }}</td>
+      <td class="{{ 'bad' if b['相对偏差%']|abs > 10 }}">{{ b['相对偏差%'] }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

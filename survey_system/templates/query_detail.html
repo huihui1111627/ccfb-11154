@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>疑问问卷 #{{ row }}（户 {{ hh_id }}）</h2>
+{% if saved %}<p class="flash">✔ 改正已保存（保留改正前后的值），并已重算插补与汇总。</p>{% endif %}
+<h3>检出问题</h3>
+<table>
+  <tr><th class="l">规则</th><th class="l">题目</th><th class="l">级别</th><th class="l">说明</th></tr>
+  {% for i in issues %}
+  <tr class="{{ 'bad' if i.severity == 'error' else 'warn' }}">
+    <td class="l">{{ i.rule }}</td><td class="l">{{ i.question }}</td>
+    <td class="l">{{ i.severity }}</td><td class="l">{{ i.msg }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h3>问卷录入值</h3>
+<table>
+  <tr><th class="l">题号</th><th class="l">题目</th><th>录入值</th><th class="l">跳转条件</th></tr>
+  {% for f in fields %}
+  <tr><td class="l">{{ f.id }}</td><td class="l">{{ f.label }}</td>
+      <td>{{ f.value }}</td><td class="l">{{ f.condition or "—" }}</td></tr>
+  {% endfor %}
+</table>
+<h3>批注改正</h3>
+<form method="post">
+  题目:
+  <select name="question">
+    {% for f in fields %}<option value="{{ f.id }}">{{ f.id }} {{ f.label }}</option>{% endfor %}
+  </select>
+  改正为: <input name="new_value" placeholder="留空表示置为缺失">
+  批注: <input name="comment" size="30" required placeholder="改正理由">
+  审核员: <input name="reviewer" value="审核员" size="8">
+  <button type="submit">保存改正</button>
+</form>
+{% if corrections %}
+<h3>本问卷改正历史</h3>
+<table>
+  <tr><th class="l">时间</th><th class="l">题目</th><th>改正前</th><th>改正后</th><th class="l">批注</th><th class="l">审核员</th></tr>
+  {% for c in corrections %}
+  <tr><td class="l">{{ c.ts }}</td><td class="l">{{ c.question }}</td>
+      <td>{{ c.old }}</td><td>{{ c.new }}</td>
+      <td class="l">{{ c.comment }}</td><td class="l">{{ c.reviewer }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+<p><a href="{{ url_for('queries') }}">← 返回疑问问卷列表</a></p>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>加权汇总（事后加权后）</h2>
+<p>权数 = 设计权数 × 事后校准（按 性别×年龄段、城乡 人口控制总数 raking)。
+抽样误差按分层多阶段设计的最终类法估计，置信区间为 95%。
+<b>样本量&lt;30 或 CV&gt;30% 的单元格自动加注"不可靠"</b>。</p>
+<p>总体真值（虚构总体留档）：季总收入均值 <b>{{ truth.季总收入 }}</b> 元，
+季总支出均值 <b>{{ truth.季总支出 }}</b> 元，就业率 <b>{{ truth.就业率 }}</b>。</p>
+<table>
+  <tr><th class="l">分组</th><th class="l">指标</th><th>估计值</th><th>标准误</th>
+      <th>95%置信区间</th><th>CV</th><th>样本量</th><th class="l">可靠性</th></tr>
+  {% for r in rows %}
+  {% set val = r.比例 if r.比例 == r.比例 and r.比例 is not none else r.均值 %}
+  {% set se = r.SE if r.SE == r.SE and r.SE is not none else r.均值SE %}
+  <tr class="{{ '' if r.可靠 else 'bad' }}">
+    <td class="l">{{ r.分组 }}</td><td class="l">{{ r.指标 }}</td>
+    <td>{{ "%.4f"|format(val) if r.指标 == "就业率" else val }}</td>
+    <td>{{ "%.4f"|format(se) if r.指标 == "就业率" else se }}</td>
+    <td>[{{ r.CI下限 }}, {{ r.CI上限 }}]</td>
+    <td>{{ r.CV }}</td><td>{{ r.样本量 }}</td>
+    <td class="l">{{ "✔" if r.可靠 else "⚠ 不可靠: " + r.备注 }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

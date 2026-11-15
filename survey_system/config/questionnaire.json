@@ -1,0 +1,42 @@
+{
+  "title": "住户收支抽样调查问卷(季度)",
+  "questions": [
+    {"id": "A1", "name": "gender",       "label": "户主性别",     "type": "choice",  "options": {"1": "男", "2": "女"}},
+    {"id": "A2", "name": "age",          "label": "户主年龄",     "type": "numeric", "min": 16, "max": 100},
+    {"id": "A3", "name": "education",    "label": "文化程度",     "type": "choice",  "options": {"1": "小学及以下", "2": "初中", "3": "高中/中专", "4": "大专", "5": "本科及以上"}},
+    {"id": "A4", "name": "emp_status",   "label": "就业状态",     "type": "choice",  "options": {"1": "就业", "2": "失业", "3": "非劳动力"}},
+    {"id": "A5", "name": "hh_size",      "label": "家庭常住人口", "type": "numeric", "min": 1, "max": 10},
+
+    {"id": "B1", "name": "wage_income",     "label": "工资性收入(季)",   "type": "numeric", "min": 0, "max": 300000, "condition": "A4 == 1"},
+    {"id": "B2", "name": "business_income", "label": "经营净收入(季)",   "type": "numeric", "min": 0, "max": 300000},
+    {"id": "B3", "name": "property_income", "label": "财产净收入(季)",   "type": "numeric", "min": 0, "max": 100000},
+    {"id": "B4", "name": "transfer_income", "label": "转移净收入(季)",   "type": "numeric", "min": 0, "max": 100000},
+    {"id": "B0", "name": "total_income",    "label": "总收入合计(季)",   "type": "numeric", "min": 0, "max": 500000},
+
+    {"id": "D1", "name": "own_house", "label": "是否有自有住房", "type": "choice", "options": {"1": "是", "2": "否"}},
+    {"id": "D2", "name": "rent",      "label": "房租支出(季)",   "type": "numeric", "min": 0, "max": 50000, "condition": "D1 == 2"},
+
+    {"id": "C1", "name": "food_exp",      "label": "食品支出(季)",   "type": "numeric", "min": 0, "max": 200000},
+    {"id": "C2", "name": "housing_exp",   "label": "居住支出(季)",   "type": "numeric", "min": 0, "max": 200000},
+    {"id": "C3", "name": "transport_exp", "label": "交通通信支出(季)", "type": "numeric", "min": 0, "max": 100000},
+    {"id": "C4", "name": "education_exp", "label": "教育文化支出(季)", "type": "numeric", "min": 0, "max": 100000},
+    {"id": "C5", "name": "medical_exp",   "label": "医疗保健支出(季)", "type": "numeric", "min": 0, "max": 100000},
+    {"id": "C0", "name": "total_exp",     "label": "总支出合计(季)",   "type": "numeric", "min": 0, "max": 500000}
+  ],
+  "cross_rules": [
+    {"id": "R1", "when": "A4 == 1", "check": "A2 <= 75", "severity": "error",
+     "msg": "就业者年龄超过75岁,年龄与就业状态矛盾"},
+    {"id": "R2", "when": "A4 == 1", "check": "B1 > 0", "severity": "error",
+     "msg": "就业者工资性收入应大于0"},
+    {"id": "R3", "when": "A2 >= 60", "check": "B4 > 0", "severity": "warning",
+     "msg": "60岁以上老人一般应有转移净收入(养老金等)"},
+    {"id": "R4", "when": "true", "check": "abs(B0 - (B1z + B2 + B3 + B4)) <= 1", "severity": "error",
+     "msg": "总收入合计与四项分项之和不符"},
+    {"id": "R5", "when": "true", "check": "abs(C0 - (C1 + C2 + C3 + C4 + C5)) <= 1", "severity": "error",
+     "msg": "总支出合计与五项分项之和不符"},
+    {"id": "R6", "when": "B0 > 0", "check": "C0 <= 3 * B0 + 3000", "severity": "warning",
+     "msg": "季度支出明显超过收入(超3倍),请核实"},
+    {"id": "R7", "when": "A2 <= 25", "check": "A3 >= 1", "severity": "warning",
+     "msg": "25岁以下户主请复核文化程度"}
+  ]
+}

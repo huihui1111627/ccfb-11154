@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>问卷结构(配置驱动)</h2>
+<p>题型、跳转逻辑、取值范围均在 <code>config/questionnaire.json</code> 中描述,审核与插补模块按配置执行。</p>
+<table>
+  <tr><th class="l">题号</th><th class="l">题目</th><th class="l">题型</th>
+      <th class="l">取值范围/选项</th><th class="l">跳转条件(满足才答)</th></tr>
+  {% for qu in q.questions %}
+  <tr>
+    <td class="l">{{ qu.id }}</td><td class="l">{{ qu.label }}</td>
+    <td class="l">{{ "选择" if qu.type == "choice" else "数值" }}</td>
+    <td class="l">
+      {% if qu.type == "choice" %}
+        {% for k, v in qu.options.items() %}{{ k }}={{ v }}{{ " " }}{% endfor %}
+      {% else %}[{{ qu.min }}, {{ qu.max }}]{% endif %}
+    </td>
+    <td class="l">{{ qu.condition or "—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>疑问问卷</h2>
+<form method="get">
+  规则:
+  <select name="rule">
+    <option value="">全部</option>
+    {% for r in rules %}
+    <option value="{{ r }}" {{ "selected" if r == cur_rule }}>{{ r }} {{ rule_names.get(r, "") }}</option>
+    {% endfor %}
+  </select>
+  级别:
+  <select name="severity">
+    <option value="">全部</option>
+    <option value="error" {{ "selected" if cur_sev == "error" }}>error</option>
+    <option value="warning" {{ "selected" if cur_sev == "warning" }}>warning</option>
+  </select>
+  <button type="submit">筛选</button>
+</form>
+<table>
+  <tr><th class="l">行号</th><th class="l">户编号</th><th>问题数</th><th class="l">操作</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td class="l">{{ r.row }}</td><td class="l">{{ r.hh_id }}</td><td>{{ r.问题数 }}</td>
+    <td class="l"><a href="{{ url_for('query_detail', row=r.row) }}">审核批注</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<p>（按问题数降序，最多显示300份）</p>
+{% endblock %}
