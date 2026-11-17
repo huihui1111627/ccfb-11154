@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>rkv 集群状态</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#26314a; --txt:#d7deec; --dim:#8593ac;
+          --ok:#3fb96b; --warn:#e0a93e; --bad:#e05b5b; --accent:#5b8def; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",monospace; }
+  header { padding:14px 22px; border-bottom:1px solid var(--line); display:flex;
+           align-items:center; gap:18px; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; }
+  .pill { padding:2px 10px; border-radius:11px; background:#202a40; color:var(--dim); font-size:12px; }
+  .pill.live { color:var(--accent); }
+  .pill.sim { color:var(--warn); }
+  .pill.ok { color:var(--ok); }
+  .pill.bad { color:var(--bad); }
+  nav { display:flex; gap:4px; padding:0 18px; border-bottom:1px solid var(--line); background:var(--panel); }
+  nav button { background:none; border:none; color:var(--dim); padding:12px 16px; cursor:pointer;
+               font-size:13px; border-bottom:2px solid transparent; }
+  nav button.active { color:var(--txt); border-bottom-color:var(--accent); }
+  main { padding:18px 22px; }
+  .tab { display:none; } .tab.active { display:block; }
+  table { border-collapse:collapse; width:100%; margin-bottom:18px; }
+  th,td { border:1px solid var(--line); padding:6px 9px; text-align:left; white-space:nowrap; }
+  th { color:var(--dim); font-weight:600; background:#131a29; }
+  .role-leader { color:var(--ok); font-weight:700; }
+  .role-candidate { color:var(--warn); }
+  .role-faulted { color:var(--bad); font-weight:700; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  .card h3 { margin:0 0 10px; font-size:13px; color:var(--dim); }
+  code { color:#9fd4a8; }
+  .muted { color:var(--dim); }
+  pre { background:#0c111c; border:1px solid var(--line); border-radius:8px; padding:12px;
+        max-height:340px; overflow:auto; font-size:12px; }
+  .bar { height:6px; background:#222c42; border-radius:3px; overflow:hidden; min-width:90px; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  .refresh { margin-left:auto; color:var(--dim); font-size:12px; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; background:#202a40); }
+  .tag.joint { background:#3a2f17; color:var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>rkv · Raft 分布式 KV 集群</h1>
+  <span id="source" class="pill">—</span>
+  <span id="clock" class="pill">t=0</span>
+  <span id="checker" class="pill">checker: —</span>
+  <span class="refresh">每 1s 自动刷新 · <a href="/api/status" style="color:var(--accent)">/api/status (JSON)</a></span>
+</header>
+<nav>
+  <button data-tab="nodes" class="active">节点状态</button>
+  <button data-tab="repl">日志复制</button>
+  <button data-tab="shards">分片</button>
+  <button data-tab="snaps">快照</button>
+  <button data-tab="check">一致性检查</button>
+</nav>
+<main>
+  <section id="tab-nodes" class="tab active">
+    <table><thead><tr>
+      <th>节点</th><th>角色</th><th>任期</th><th>已知Leader</th><th>commit</th><th>applied</th>
+      <th>成员 (voters)</th><th>联合共识</th><th>租约</th><th>读计数 (ReadIndex/Lease)</th><th>故障</th>
+    </tr></thead><tbody id="nodes-body"></tbody></table>
+    <div class="card"><h3>任期变化与选主耗时（最近事件，每节点环形保留）</h3>
+      <table><thead><tr><th>节点</th><th>时间(ms)</th><th>任期</th><th>角色</th>
+      <th>选主耗时(ms)</th><th>Leader</th></tr></thead><tbody id="terms-body"></tbody></table>
+    </div>
+  </section>
+
+  <section id="tab-repl" class="tab">
+    <table><thead><tr>
+      <th>节点</th><th>角色</th><th>任期</th><th>最后日志</th><th>commit</th><th>applied</th>
+      <th>对各 peer 的 matchIndex</th><th>对各 peer 的 nextIndex</th>
+    </tr></thead><tbody id="repl-body"></tbody></table>
+    <p class="muted">matchIndex 落后 leader commit 越多说明复制延迟越大；nextIndex 回退通常伴随冲突重试。</p>
+  </section>
+
+  <section id="tab-shards" class="tab">
+    <table><thead><tr>
+      <th>分片</th><th>Raft 组</th><th>区间 start</th><th>区间 end</th><th>成员</th><th>状态</th>
+    </tr></thead><tbody id="shards-body"></tbody></table>
+    <div class="card"><h3>自动分裂历史</h3>
+      <table><thead><tr><th>时间(ms)</th><th>老分片→新分片</th><th>老组→新组</th>
+      <th>分裂点</th><th>迁移 key 数</th></tr></thead><tbody id="splits-body"></tbody></table>
+    </div>
+  </section>
+
+  <section id="tab-snaps" class="tab">
+    <table><thead><tr>
+      <th>节点</th><th>组</th><th>快照 index</th><th>WAL 现存条数</th><th>压缩进度</th>
+    </tr></thead><tbody id="snaps-body"></tbody></table>
+    <p class="muted">日志达到 snapshot_threshold 后落快照并截断 WAL 前缀；落后过多的节点直接收 InstallSnapshot 追平。</p>
+  </section>
+
+  <section id="tab-check" class="tab">
+    <div class="grid2">
+      <div class="card"><h3>线性一致性检查器（自写 Wing–Gong 回溯）</h3>
+        <table id="check-table"></table>
+      </div>
+      <div class="card"><h3>网络与压力</h3><table id="net-table"></table></div>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>违规详情 / 事件流尾部</h3>
+      <pre id="violations">（暂无数据）</pre></div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $('#tab-' + b.dataset.tab).classList.add('active');
+});
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const roleClass = r => 'role-' + r;
+
+async function refresh() {
+  let d;
+  try { d = await (await fetch('/api/status')).json(); } catch(e) { return; }
+  $('#source').textContent = d.source === 'simulation' ? '模拟运行 (确定性)' : '真实集群 (TCP)';
+  $('#source').className = 'pill ' + (d.source === 'simulation' ? 'sim' : 'live');
+  $('#clock').textContent = 't=' + d.now_ms + 'ms';
+  const c = d.checker;
+  const cpill = $('#checker');
+  if (c && (c.total_ops > 0)) {
+    cpill.textContent = `checker: ${c.ok ? '线性一致 ✓' : (c.inconclusive ? '无法判定' : '违规 ✗')} (${c.total_ops} ops)`;
+    cpill.className = 'pill ' + (c.ok ? 'ok' : 'bad');
+  } else { cpill.textContent = 'checker: 等待数据'; cpill.className = 'pill'; }
+
+  // 节点状态
+  $('#nodes-body').innerHTML = d.nodes.map(n => `<tr>
+    <td>${n.node_id}</td><td class="${roleClass(n.role)}">${esc(n.role)}</td>
+    <td>${n.term}</td><td>${n.leader ?? '<span class=muted>?</span>'}</td>
+    <td>${n.commit}</td><td>${n.applied}</td>
+    <td>[${n.voters.join(', ')}]</td>
+    <td>${n.in_joint ? '<span class="tag joint">C_old,new</span>' : '<span class=muted>否</span>'}
+        ${n.old_voters ? '<div class=muted>old:['+n.old_voters.join(',')+']</div>' : ''}</td>
+    <td>${n.lease_valid ? '<span class="role-leader">有效</span>' : '<span class=muted>—</span>'}
+        <div class=muted>到期 ${n.lease_expire_ms}ms</div></td>
+    <td>${n.readindex_reads} / ${n.lease_reads} <div class=muted>待处理 ${n.pending_reads}</div></td>
+    <td>${n.fault ? '<span class=role-faulted>'+esc(n.fault)+'</span>' : '<span class=muted>—</span>'}</td>
+  </tr>`).join('');
+
+  const termRows = [];
+  d.nodes.forEach(n => (n.term_events || []).slice().reverse().forEach(te =>
+    termRows.push(`<tr><td>${n.node_id}</td><td>${te.at_ms}</td><td>${te.term}</td>
+      <td>${esc(te.role)}</td><td>${te.election_elapsed_ms ?? '<span class=muted>—</span>'}</td>
+      <td>${te.leader ?? '<span class=muted>—</span>'}</td></tr>`)));
+  $('#terms-body').innerHTML = termRows.join('') || '<tr><td colspan=6 class=muted>暂无</td></tr>';
+
+  // 日志复制
+  $('#repl-body').innerHTML = d.replication.map(r => `<tr>
+    <td>${r.node_id}</td><td class="${roleClass(r.role)}">${esc(r.role)}</td>
+    <td>${r.term}</td><td>${r.last_log_index}</td><td>${r.commit}</td><td>${r.applied}</td>
+    <td>${r.match_index.map(([p,v]) => p+':'+v).join(' ') || '<span class=muted>—</span>'}</td>
+    <td>${r.next_index.map(([p,v]) => p+':'+v).join(' ') || '<span class=muted>—</span>'}</td></tr>`).join('');
+
+  // 分片
+  $('#shards-body').innerHTML = d.shards.map(s => `<tr>
+    <td>${s.shard_id}</td><td>${s.group}</td>
+    <td><code>${esc(s.start || '(空)')}</code></td>
+    <td>${s.end ? '<code>'+esc(s.end)+'</code>' : '<span class=muted>∞</span>'}</td>
+    <td>[${s.voters.join(', ')}]</td>
+    <td>${s.splitting ? '<span class="tag joint">分裂中</span>' : '<span class=role-leader>正常</span>'}</td>
+  </tr>`).join('') || '<tr><td colspan=6 class=muted>暂无分片数据</td></tr>';
+  $('#splits-body').innerHTML = d.splits.map(s => `<tr>
+    <td>${s.at_ms}</td><td>${s.old_shard} → ${s.new_shard}</td>
+    <td>${s.old_group} → ${s.new_group}</td><td><code>${esc(s.split_key)}</code></td>
+    <td>${s.migrated_keys}</td></tr>`).join('') || '<tr><td colspan=5 class=muted>尚未发生分裂</td></tr>';
+
+  // 快照
+  const maxSnap = Math.max(1, ...d.snapshots.map(s => s.snapshot_index));
+  $('#snaps-body').innerHTML = d.snapshots.map(s => `<tr>
+    <td>${s.node_id}</td><td>${s.group}</td><td>${s.snapshot_index}</td><td>${s.log_len}</td>
+    <td><div class=bar><i style="width:${(s.snapshot_index/maxSnap*100).toFixed(0)}%"></i></div></td>
+  </tr>`).join('') || '<tr><td colspan=5 class=muted>暂无</td></tr>';
+
+  // 一致性检查
+  if (c) {
+    $('#check-table').innerHTML = [
+      ['读模式', esc(c.read_mode || '—')], ['总操作数', c.total_ops],
+      ['检查的 key 数', c.keys_checked], ['搜索状态数', c.states_explored],
+      ['结论', c.ok ? '<span class=role-leader>存在合法全序，线性一致</span>'
+             : (c.inconclusive ? '<span style="color:var(--warn)">搜索预算耗尽，无法判定</span>'
+                               : '<span class=role-faulted>不存在合法线性化！</span>')],
+      ['复现种子', c.seed ?? '—'],
+    ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+  }
+  $('#net-table').innerHTML = [
+    ['在途消息', d.net.inflight], ['已投递', d.net.delivered], ['已丢弃', d.net.dropped],
+    ['未完成客户端请求', d.net.pending_ops],
+  ].map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+  const viol = (c.violations || []);
+  $('#violations').textContent = viol.length
+    ? viol.join('\n')
+    : (d.events || []).slice().reverse().slice(0, 120).join('\n') || '（暂无事件）';
+}
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

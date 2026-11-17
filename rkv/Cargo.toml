@@ -1,0 +1,21 @@
+[package]
+name = "rkv"
+version = "0.1.0"
+edition = "2021"
+description = "Raft-based distributed key-value store with sharding, deterministic fault simulation and linearizability checker"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+rand = "0.8"
+rand_pcg = "0.3"
+crc32fast = "1"
+tower-http = { version = "0.6", features = ["fs"] }
+async-trait = "0.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
